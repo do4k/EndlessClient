@@ -43,6 +43,7 @@ namespace EndlessClient.Rendering.Map
         private readonly IGridDrawCoordinateCalculator _gridDrawCoordinateCalculator;
         private readonly IClientWindowSizeRepository _clientWindowSizeRepository;
         private readonly IFixedTimeStepRepository _fixedTimeStepRepository;
+        private readonly ICamera2D _camera;
 
         private RenderTarget2D _mapBaseTarget, _mapObjectTarget;
         private SpriteBatch _sb;
@@ -83,7 +84,8 @@ namespace EndlessClient.Rendering.Map
                            IMouseCursorRenderer mouseCursorRenderer,
                            IGridDrawCoordinateCalculator gridDrawCoordinateCalculator,
                            IClientWindowSizeRepository clientWindowSizeRepository,
-                           IFixedTimeStepRepository fixedTimeStepRepository)
+                           IFixedTimeStepRepository fixedTimeStepRepository,
+                           ICamera2D camera)
             : base((Game)endlessGame)
         {
             _renderTargetFactory = renderTargetFactory;
@@ -102,6 +104,7 @@ namespace EndlessClient.Rendering.Map
             _gridDrawCoordinateCalculator = gridDrawCoordinateCalculator;
             _clientWindowSizeRepository = clientWindowSizeRepository;
             _fixedTimeStepRepository = fixedTimeStepRepository;
+            _camera = camera;
             _mapGridEffectRenderers = new Dictionary<MapCoordinate, IEffectRenderer>();
         }
 
@@ -142,6 +145,9 @@ namespace EndlessClient.Rendering.Map
 
             if (Visible)
             {
+                // Update camera to follow the main character
+                _camera.CenterOnCharacter(_characterProvider.MainCharacter.RenderProperties);
+
                 _characterRendererUpdater.UpdateCharacters(gameTime);
                 _npcRendererUpdater.UpdateNPCs(gameTime);
                 _dynamicMapObjectUpdater.UpdateMapObjects(gameTime);
@@ -397,26 +403,37 @@ namespace EndlessClient.Rendering.Map
 
         private void DrawToSpriteBatch(SpriteBatch spriteBatch, GameTime gameTime)
         {
-            spriteBatch.Begin();
+            // Note: The camera system is now used for coordinate calculations in GridDrawCoordinateCalculator
+            // The render targets are already in screen-space after those calculations
+            // We no longer need to recalculate offsets every frame - the camera does it once
 
             var drawLoc = _gridDrawCoordinateCalculator.CalculateGroundLayerRenderTargetDrawCoordinates();
             var offset = _quakeState.Map(GetOffset).ValueOr(0);
 
             lock (_rt_locker_)
             {
+                spriteBatch.Begin();
                 spriteBatch.Draw(_mapBaseTarget, drawLoc + new Vector2(offset, 0), Color.White);
+                spriteBatch.End();
+
+                spriteBatch.Begin();
                 DrawBaseLayers(spriteBatch);
+                spriteBatch.End();
 
+                spriteBatch.Begin();
                 _mouseCursorRenderer.Draw(spriteBatch, new Vector2(offset, 0));
+                spriteBatch.End();
 
+                spriteBatch.Begin();
                 spriteBatch.Draw(_mapObjectTarget, new Vector2(offset, 0), Color.White);
+                spriteBatch.End();
 
+                spriteBatch.Begin();
                 foreach (var target in _mapGridEffectRenderers.Values)
                 {
                     target.DrawBehindTarget(spriteBatch);
                     target.DrawInFrontOfTarget(spriteBatch);
                 }
-
                 spriteBatch.End();
             }
 
@@ -425,8 +442,6 @@ namespace EndlessClient.Rendering.Map
 
         private void DrawBaseLayers(SpriteBatch spriteBatch)
         {
-            var offset = _quakeState.Map(GetOffset).ValueOr(0);
-
             var renderBounds = _mapRenderDistanceCalculator.CalculateRenderBounds(_characterProvider.MainCharacter, _currentMapProvider.CurrentMap);
 
             for (var row = renderBounds.FirstRow; row <= renderBounds.LastRow; row++)
@@ -439,12 +454,10 @@ namespace EndlessClient.Rendering.Map
                     {
                         var renderer = _mapEntityRendererProvider.BaseRenderers[i];
                         if (renderer.CanRender(row, col))
-                            renderer.RenderElementAt(spriteBatch, row, col, alpha, new Vector2(offset, 0));
+                            renderer.RenderElementAt(spriteBatch, row, col, alpha);
                     }
                 }
             }
-
-            static float GetOffset(MapQuakeState quakeState) => quakeState.Offset;
         }
 
         private int GetAlphaForCoordinates(int objX, int objY, EOLib.Domain.Character.Character character)
