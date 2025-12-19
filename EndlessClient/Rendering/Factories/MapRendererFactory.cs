@@ -33,6 +33,7 @@ namespace EndlessClient.Rendering.Factories
         private readonly IGridDrawCoordinateCalculator _gridDrawCoordinateCalculator;
         private readonly IClientWindowSizeRepository _clientWindowSizeRepository;
         private readonly IFixedTimeStepRepository _fixedTimeStepRepository;
+        private readonly ICamera2D _camera;
 
         public MapRendererFactory(IEndlessGameProvider endlessGameProvider,
             IRenderTargetFactory renderTargetFactory,
@@ -50,7 +51,8 @@ namespace EndlessClient.Rendering.Factories
             IMouseCursorRendererFactory mouseCursorRendererFactory,
             IGridDrawCoordinateCalculator gridDrawCoordinateCalculator,
             IClientWindowSizeRepository clientWindowSizeRepository,
-            IFixedTimeStepRepository fixedTimeStepRepository)
+            IFixedTimeStepRepository fixedTimeStepRepository,
+            ICamera2D camera)
         {
             _endlessGameProvider = endlessGameProvider;
             _renderTargetFactory = renderTargetFactory;
@@ -69,6 +71,7 @@ namespace EndlessClient.Rendering.Factories
             _gridDrawCoordinateCalculator = gridDrawCoordinateCalculator;
             _clientWindowSizeRepository = clientWindowSizeRepository;
             _fixedTimeStepRepository = fixedTimeStepRepository;
+            _camera = camera;
         }
 
         public IMapRenderer CreateMapRenderer()
@@ -89,7 +92,8 @@ namespace EndlessClient.Rendering.Factories
                                    _mouseCursorRendererFactory.Create(),
                                    _gridDrawCoordinateCalculator,
                                    _clientWindowSizeRepository,
-                                   _fixedTimeStepRepository);
+                                   _fixedTimeStepRepository,
+                                   _camera);
         }
     }
 }

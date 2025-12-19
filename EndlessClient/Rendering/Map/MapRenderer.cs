@@ -43,6 +43,7 @@ namespace EndlessClient.Rendering.Map
         private readonly IGridDrawCoordinateCalculator _gridDrawCoordinateCalculator;
         private readonly IClientWindowSizeRepository _clientWindowSizeRepository;
         private readonly IFixedTimeStepRepository _fixedTimeStepRepository;
+        private readonly ICamera2D _camera;
 
         private RenderTarget2D _mapBaseTarget, _mapObjectTarget;
         private SpriteBatch _sb;
@@ -83,7 +84,8 @@ namespace EndlessClient.Rendering.Map
                            IMouseCursorRenderer mouseCursorRenderer,
                            IGridDrawCoordinateCalculator gridDrawCoordinateCalculator,
                            IClientWindowSizeRepository clientWindowSizeRepository,
-                           IFixedTimeStepRepository fixedTimeStepRepository)
+                           IFixedTimeStepRepository fixedTimeStepRepository,
+                           ICamera2D camera)
             : base((Game)endlessGame)
         {
             _renderTargetFactory = renderTargetFactory;
@@ -101,6 +103,7 @@ namespace EndlessClient.Rendering.Map
             _mouseCursorRenderer = mouseCursorRenderer;
             _gridDrawCoordinateCalculator = gridDrawCoordinateCalculator;
             _clientWindowSizeRepository = clientWindowSizeRepository;
+            _camera = camera;
             _fixedTimeStepRepository = fixedTimeStepRepository;
             _mapGridEffectRenderers = new Dictionary<MapCoordinate, IEffectRenderer>();
         }
@@ -124,6 +127,8 @@ namespace EndlessClient.Rendering.Map
         {
             if (_currentMapStateProvider.IsSleepWarp) return;
 
+            _camera.Update();
+
             if (_lastMapChecksum == null || !_lastMapChecksum.SequenceEqual(_currentMapProvider.CurrentMap.Properties.Checksum))
             {
                 // The dimensions of the map are 0-based in the properties. Adjust to 1-based for RT creation
@@ -138,6 +143,8 @@ namespace EndlessClient.Rendering.Map
                         (widthPlus1 + heightPlus1) * 16);
                     _groundDrawn = false;
                 }
+
+                _camera.ForceUpdate();
             }
 
             if (Visible)

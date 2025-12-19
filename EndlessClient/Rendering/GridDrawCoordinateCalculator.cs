@@ -15,16 +15,23 @@ namespace EndlessClient.Rendering
         private readonly ICurrentMapProvider _currentMapProvider;
         private readonly IRenderOffsetCalculator _renderOffsetCalculator;
         private readonly IClientWindowSizeProvider _clientWindowSizeProvider;
+        private readonly ICamera2D _camera;
+
+        private int _cachedViewportWidthFactor;
+        private int _cachedViewportHeightFactor;
+        private bool _cacheValid;
 
         public GridDrawCoordinateCalculator(ICharacterProvider characterProvider,
                                             ICurrentMapProvider currentMapProvider,
                                             IRenderOffsetCalculator renderOffsetCalculator,
-                                            IClientWindowSizeProvider clientWindowSizeProvider)
+                                            IClientWindowSizeProvider clientWindowSizeProvider,
+                                            ICamera2D camera)
         {
             _characterProvider = characterProvider;
             _currentMapProvider = currentMapProvider;
             _renderOffsetCalculator = renderOffsetCalculator;
             _clientWindowSizeProvider = clientWindowSizeProvider;
+            _camera = camera;
         }
 
         public Vector2 CalculateRawRenderCoordinatesFromGridUnits(int gridX, int gridY, int tileWidth = 64, int tileHeight = 32)
@@ -38,12 +45,11 @@ namespace EndlessClient.Rendering
 
         public Vector2 CalculateDrawCoordinatesFromGridUnits(int gridX, int gridY)
         {
-            var widthFactor = _clientWindowSizeProvider.Width / 2; // 640 * (1/2) - 1
-            var heightFactor = _clientWindowSizeProvider.Resizable
-                ? _clientWindowSizeProvider.Height / 2
-                : _clientWindowSizeProvider.Height * 3 / 10 - 2; // 480 * (3/10) - 2
+            UpdateCachedValues();
 
-            return new Vector2(widthFactor, heightFactor) + CalculateRawRenderCoordinatesFromGridUnits(gridX, gridY) - GetMainCharacterOffsets();
+            return new Vector2(_cachedViewportWidthFactor, _cachedViewportHeightFactor) +
+                   CalculateRawRenderCoordinatesFromGridUnits(gridX, gridY) -
+                   _camera.GetMainCharacterOffset();
         }
 
         public Vector2 CalculateDrawCoordinatesFromGridUnits(MapCoordinate mapCoordinate)
@@ -64,10 +70,10 @@ namespace EndlessClient.Rendering
 
         public Vector2 CalculateGroundLayerRenderTargetDrawCoordinates(bool isMiniMap = false, int tileWidth = 64, int tileHeight = 32)
         {
-            var ViewportWidthFactor = _clientWindowSizeProvider.Width / 2 - 1; // 640 * (1/2) - 1
-            var ViewportHeightFactor = _clientWindowSizeProvider.Resizable
-                ? _clientWindowSizeProvider.Height / 2
-                : _clientWindowSizeProvider.Height * 3 / 10 - 2; // 480 * (3/10) - 2
+            UpdateCachedValues();
+
+            var ViewportWidthFactor = _cachedViewportWidthFactor - 1;
+            var ViewportHeightFactor = _cachedViewportHeightFactor;
 
             var rp = _characterProvider.MainCharacter.RenderProperties;
             var cx = isMiniMap ? _characterProvider.MainCharacter.X : rp.MapX;
@@ -87,19 +93,18 @@ namespace EndlessClient.Rendering
 
         public Vector2 CalculateDrawCoordinates(DomainNPC npc)
         {
-            var ViewportWidthFactor = _clientWindowSizeProvider.Width / 2 - 1; // 640 * (1/2) - 1
-            var ViewportHeightFactor = _clientWindowSizeProvider.Resizable
-                ? _clientWindowSizeProvider.Height / 2
-                : _clientWindowSizeProvider.Height * 3 / 10 - 2; // 480 * (3/10) - 1 // ???
+            UpdateCachedValues();
+
+            var ViewportWidthFactor = _cachedViewportWidthFactor - 1;
+            var ViewportHeightFactor = _cachedViewportHeightFactor;
 
             var npcOffsetX = _renderOffsetCalculator.CalculateOffsetX(npc);
             var npcOffsetY = _renderOffsetCalculator.CalculateOffsetY(npc);
 
-            var mainOffsetX = _renderOffsetCalculator.CalculateOffsetX(_characterProvider.MainCharacter.RenderProperties);
-            var mainOffsetY = _renderOffsetCalculator.CalculateOffsetY(_characterProvider.MainCharacter.RenderProperties);
+            var mainOffset = _camera.GetMainCharacterOffset();
 
-            return new Vector2(ViewportWidthFactor + npcOffsetX - mainOffsetX,
-                               ViewportHeightFactor + npcOffsetY - mainOffsetY + 16);
+            return new Vector2(ViewportWidthFactor + npcOffsetX - mainOffset.X,
+                               ViewportHeightFactor + npcOffsetY - mainOffset.Y + 16);
         }
 
         public MapCoordinate CalculateGridCoordinatesFromDrawLocation(Vector2 drawLocation)
@@ -159,6 +164,22 @@ namespace EndlessClient.Rendering
             var props = _characterProvider.MainCharacter.RenderProperties;
             return new Vector2(_renderOffsetCalculator.CalculateWalkAdjustX(props),
                                _renderOffsetCalculator.CalculateWalkAdjustY(props));
+        }
+
+        private void UpdateCachedValues()
+        {
+            var currentWidth = _clientWindowSizeProvider.Width;
+            var currentHeight = _clientWindowSizeProvider.Height;
+            var isResizable = _clientWindowSizeProvider.Resizable;
+
+            if (!_cacheValid || _cachedViewportWidthFactor != currentWidth / 2)
+            {
+                _cachedViewportWidthFactor = currentWidth / 2;
+                _cachedViewportHeightFactor = isResizable
+                    ? currentHeight / 2
+                    : currentHeight * 3 / 10 - 2;
+                _cacheValid = true;
+            }
         }
     }
 
