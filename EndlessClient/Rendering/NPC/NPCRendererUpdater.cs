@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using AutomaticTypeMapper;
 using EOLib.Domain.Map;
@@ -51,11 +52,20 @@ namespace EndlessClient.Rendering.NPC
 
         private void CleanUpRemovedNPCs()
         {
-            var removedNPCs = _npcRendererRepository.NPCRenderers.Values
-                .Where(x => x.IsAlive)
-                .Select(x => x.NPC.Index)
-                .Where(x => !_currentMapStateProvider.NPCs.Select(y => y.Index).Any(y => y == x))
-                .ToList();
+            var currentNPCIndices = new HashSet<int>();
+            foreach (var npc in _currentMapStateProvider.NPCs)
+            {
+                currentNPCIndices.Add(npc.Index);
+            }
+
+            var removedNPCs = new List<int>();
+            foreach (var renderer in _npcRendererRepository.NPCRenderers.Values)
+            {
+                if (renderer.IsAlive && !currentNPCIndices.Contains(renderer.NPC.Index))
+                {
+                    removedNPCs.Add(renderer.NPC.Index);
+                }
+            }
 
             foreach (var index in removedNPCs)
             {

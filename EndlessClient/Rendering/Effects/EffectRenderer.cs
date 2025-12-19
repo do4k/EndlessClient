@@ -95,19 +95,24 @@ namespace EndlessClient.Rendering.Effects
 
         public void Update()
         {
-            if (!_effectInfo.Any())
+            if (_effectInfo.Count == 0)
                 return;
 
             if (_lastFrameTimer.ElapsedMilliseconds >= 120)
             {
                 _lastFrameTimer.Restart();
-                _effectInfo.ToList().ForEach(ei => ei.NextFrame());
 
-                var doneEffects = _effectInfo.Where(ei => ei.Done);
-                doneEffects.ToList().ForEach(ei => _effectInfo.Remove(ei));
+                for (var i = _effectInfo.Count - 1; i >= 0; i--)
+                {
+                    _effectInfo[i].NextFrame();
+                    if (_effectInfo[i].Done)
+                    {
+                        _effectInfo.RemoveAt(i);
+                    }
+                }
             }
 
-            if (!_effectInfo.Any())
+            if (_effectInfo.Count == 0)
             {
                 State = EffectState.Stopped;
                 _lastFrameTimer.Stop();
@@ -126,18 +131,18 @@ namespace EndlessClient.Rendering.Effects
 
         public void DrawBehindTarget(SpriteBatch sb, bool beginHasBeenCalled = true)
         {
-            if (!_effectInfo.Any())
+            if (_effectInfo.Count == 0)
                 return;
 
-            DrawEffects(sb, beginHasBeenCalled, _effectInfo.Where(x => !x.OnTopOfCharacter));
+            DrawEffects(sb, beginHasBeenCalled, onTopOfCharacter: false);
         }
 
         public void DrawInFrontOfTarget(SpriteBatch sb, bool beginHasBeenCalled = true)
         {
-            if (!_effectInfo.Any())
+            if (_effectInfo.Count == 0)
                 return;
 
-            DrawEffects(sb, beginHasBeenCalled, _effectInfo.Where(x => x.OnTopOfCharacter));
+            DrawEffects(sb, beginHasBeenCalled, onTopOfCharacter: true);
         }
 
         private void StartPlaying()
@@ -155,7 +160,7 @@ namespace EndlessClient.Rendering.Effects
             }
         }
 
-        private void DrawEffects(SpriteBatch sb, bool beginHasBeenCalled, IEnumerable<IEffectSpriteInfo> effectSprites)
+        private void DrawEffects(SpriteBatch sb, bool beginHasBeenCalled, bool onTopOfCharacter)
         {
             if (!beginHasBeenCalled)
                 sb.Begin();
@@ -174,9 +179,13 @@ namespace EndlessClient.Rendering.Effects
                     },
                     none: () => Vector2.Zero));
 
-            foreach (var effectInfo in effectSprites)
+            for (var i = 0; i < _effectInfo.Count; i++)
             {
-                effectInfo.DrawToSpriteBatch(sb, targetBasePosition);
+                var effectInfo = _effectInfo[i];
+                if (effectInfo.OnTopOfCharacter == onTopOfCharacter)
+                {
+                    effectInfo.DrawToSpriteBatch(sb, targetBasePosition);
+                }
             }
 
             if (!beginHasBeenCalled)

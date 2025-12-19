@@ -37,7 +37,7 @@ namespace EndlessClient.Rendering.MapEntityRenderers
         {
             var items = _currentMapStateProvider.MapItems[new MapCoordinate(col, row)];
 
-            foreach (var item in items.OrderBy(item => item.UniqueID))
+            foreach (var item in items)
             {
                 var itemPos = GetDrawCoordinatesFromGridUnits(col, row);
                 var itemTexture = _mapItemGraphicProvider.GetItemGraphic(item.ItemID, item.Amount);

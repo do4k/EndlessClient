@@ -17,6 +17,9 @@ namespace EndlessClient.Rendering.NPC
         private readonly Dictionary<int, (MapCoordinate Coord, EODirection Direction)> _queuedWalk = [];
         private readonly Dictionary<int, EODirection> _queuedAttack = [];
 
+        private readonly List<int> _npcsDoneWalking = [];
+        private readonly List<int> _npcsDoneAttacking = [];
+
         private readonly ICurrentMapStateRepository _currentMapStateRepository;
         private readonly IFixedTimeStepRepository _fixedTimeStepRepository;
 
@@ -93,7 +96,7 @@ namespace EndlessClient.Rendering.NPC
 
         private void AnimateNPCWalking()
         {
-            var npcsDoneWalking = new List<int>();
+            _npcsDoneWalking.Clear();
             foreach (var pair in _npcStartWalkingTimes.Values)
             {
                 if (_fixedTimeStepRepository.TickCount - pair.ActionTick >= TICKS_PER_ACTION_FRAME)
@@ -119,7 +122,7 @@ namespace EndlessClient.Rendering.NPC
                             }
                             else
                             {
-                                npcsDoneWalking.Add(pair.UniqueID);
+                                _npcsDoneWalking.Add(pair.UniqueID);
 
                                 if (_queuedAttack.TryGetValue(pair.UniqueID, out var update))
                                 {
@@ -134,18 +137,18 @@ namespace EndlessClient.Rendering.NPC
                     }
                     else
                     {
-                        npcsDoneWalking.Add(pair.UniqueID);
+                        _npcsDoneWalking.Add(pair.UniqueID);
                     }
                 }
             }
 
-            foreach (var index in npcsDoneWalking)
+            foreach (var index in _npcsDoneWalking)
                 _npcStartWalkingTimes.Remove(index);
         }
 
         private void AnimateNPCAttacking()
         {
-            var npcsDoneAttacking = new List<int>();
+            _npcsDoneAttacking.Clear();
             foreach (var pair in _npcStartAttackingTimes.Values)
             {
                 if (_fixedTimeStepRepository.TickCount - pair.ActionTick >= TICKS_PER_ACTION_FRAME)
@@ -171,7 +174,7 @@ namespace EndlessClient.Rendering.NPC
                             }
                             else
                             {
-                                npcsDoneAttacking.Add(pair.UniqueID);
+                                _npcsDoneAttacking.Add(pair.UniqueID);
 
                                 if (_queuedWalk.TryGetValue(pair.UniqueID, out var update))
                                 {
@@ -188,12 +191,12 @@ namespace EndlessClient.Rendering.NPC
                     }
                     else
                     {
-                        npcsDoneAttacking.Add(pair.UniqueID);
+                        _npcsDoneAttacking.Add(pair.UniqueID);
                     }
                 }
             }
 
-            foreach (var index in npcsDoneAttacking)
+            foreach (var index in _npcsDoneAttacking)
                 _npcStartAttackingTimes.Remove(index);
         }
 

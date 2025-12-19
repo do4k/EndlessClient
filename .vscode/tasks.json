@@ -49,5 +49,37 @@
             ],
             "problemMatcher": "$msCompile"
         },
+        {
+            "label": "build-client-mac-x64",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/EndlessClient/EndlessClient.csproj",
+                "-r",
+                "osx-x64"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "run-client-mac-arm",
+            "command": "open",
+            "type": "process",
+            "args": [
+                "${workspaceFolder}/bin/Debug/client/net8.0-macos/osx-arm64/EndlessClient.app"
+            ],
+            "dependsOn": "build-client-mac-arm",
+            "problemMatcher": []
+        },
+        {
+            "label": "run-client-mac-x64",
+            "command": "open",
+            "type": "process",
+            "args": [
+                "${workspaceFolder}/bin/Debug/client/net8.0-macos/osx-x64/EndlessClient.app"
+            ],
+            "dependsOn": "build-client-mac-x64",
+            "problemMatcher": []
+        },
     ]
 }

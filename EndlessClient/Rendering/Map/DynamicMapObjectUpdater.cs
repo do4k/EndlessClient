@@ -31,6 +31,9 @@ namespace EndlessClient.Rendering.Map
         private IMapFile _cachedMap;
         private List<MapCoordinate> _ambientSounds;
 
+        private readonly Dictionary<MapCoordinate, List<ICharacterRenderer>> _charactersByCoord = new();
+        private readonly List<ICharacterRenderer> _tempCharacterList = new();
+
         public DynamicMapObjectUpdater(ICharacterProvider characterProvider,
                                        ICharacterRendererProvider characterRendererProvider,
                                        ICurrentMapStateRepository currentMapStateRepository,
@@ -115,33 +118,42 @@ namespace EndlessClient.Rendering.Map
 
         private void HideStackedCharacterNames()
         {
-            var characters = _characterRendererProvider.CharacterRenderers.Values
-                .Where(x => x.DrawArea.Contains(_userInputProvider.CurrentMouseState.Position))
-                .GroupBy(x => x.Character.RenderProperties.Coordinates());
+            foreach (var list in _charactersByCoord.Values)
+                list.Clear();
 
-            foreach (var grouping in characters)
+            foreach (var renderer in _characterRendererProvider.CharacterRenderers.Values)
             {
-                if (grouping.Count() > 1)
+                if (renderer.DrawArea.Contains(_userInputProvider.CurrentMouseState.Position))
                 {
-                    var isFirst = true;
-                    foreach (var character in grouping.Reverse())
+                    var coord = renderer.Character.RenderProperties.Coordinates();
+                    if (!_charactersByCoord.TryGetValue(coord, out var list))
                     {
-                        if (isFirst)
-                        {
-                            character.ShowName();
-                        }
-                        else
-                        {
-                            character.HideName();
-                        }
+                        list = new List<ICharacterRenderer>();
+                        _charactersByCoord[coord] = list;
+                    }
+                    list.Add(renderer);
+                }
+            }
 
-                        isFirst = false;
+            foreach (var kvp in _charactersByCoord)
+            {
+                var grouping = kvp.Value;
+                if (grouping.Count == 0)
+                    continue;
+
+                if (grouping.Count > 1)
+                {
+                    for (var i = grouping.Count - 1; i >= 0; i--)
+                    {
+                        if (i == grouping.Count - 1)
+                            grouping[i].ShowName();
+                        else
+                            grouping[i].HideName();
                     }
                 }
                 else
                 {
-                    foreach (var character in grouping)
-                        character.ShowName();
+                    grouping[0].ShowName();
                 }
             }
         }

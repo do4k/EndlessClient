@@ -193,10 +193,44 @@ namespace EndlessClient.HUD.Panels
 
             if (!_cachedInventory.SetEquals(_characterInventoryProvider.ItemInventory))
             {
-                var added = _characterInventoryProvider.ItemInventory.Where(i => !_cachedInventory.Any(j => i.ItemID == j.ItemID));
-                var removed = _cachedInventory.Where(i => !_characterInventoryProvider.ItemInventory.Any(j => i.ItemID == j.ItemID));
-                var updated = _characterInventoryProvider.ItemInventory.Except(added)
-                    .Where(i => _cachedInventory.Any(j => i.ItemID == j.ItemID && i.Amount != j.Amount));
+                var cachedItemIDs = new HashSet<int>();
+                var cachedItemAmounts = new Dictionary<int, int>();
+                foreach (var item in _cachedInventory)
+                {
+                    cachedItemIDs.Add(item.ItemID);
+                    cachedItemAmounts[item.ItemID] = item.Amount;
+                }
+
+                var currentItemIDs = new HashSet<int>();
+                foreach (var item in _characterInventoryProvider.ItemInventory)
+                {
+                    currentItemIDs.Add(item.ItemID);
+                }
+
+                var added = new List<InventoryItem>();
+                foreach (var item in _characterInventoryProvider.ItemInventory)
+                {
+                    if (!cachedItemIDs.Contains(item.ItemID))
+                        added.Add(item);
+                }
+
+                var removed = new List<InventoryItem>();
+                foreach (var item in _cachedInventory)
+                {
+                    if (!currentItemIDs.Contains(item.ItemID))
+                        removed.Add(item);
+                }
+
+                var updated = new List<InventoryItem>();
+                foreach (var item in _characterInventoryProvider.ItemInventory)
+                {
+                    if (cachedItemIDs.Contains(item.ItemID) &&
+                        cachedItemAmounts.TryGetValue(item.ItemID, out var cachedAmount) &&
+                        item.Amount != cachedAmount)
+                    {
+                        updated.Add(item);
+                    }
+                }
 
                 foreach (var item in removed)
                 {
@@ -255,7 +289,7 @@ namespace EndlessClient.HUD.Panels
 
                 _cachedInventory = _characterInventoryProvider.ItemInventory.ToHashSet();
 
-                if (removed.Any())
+                if (removed.Count > 0)
                 {
                     RemoveHiddenItemsFromCachedInventory();
                 }
